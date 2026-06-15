@@ -5,7 +5,17 @@
   import { KillAgent, RemoveBeacon, RenameAgent } from '../../api/agents.js';
   import { ListAutomationRules, RunAutomationRule } from '../../api/automation.js';
   import { CloseShell, GetCommandCatalog, StartShell } from '../../api/console.js';
-  import { onAutomationUpdated } from '../../api/runtime.js';
+  import {
+    ClearNetworkDiscoveries,
+    DiscoverNetwork,
+    GetNetworkDiscoveries,
+    RemoveNetworkDiscoveries,
+  } from '../../api/discovery.js';
+  import {
+    copyText,
+    onAutomationUpdated,
+    onNetworkDiscoveryUpdated,
+  } from '../../api/runtime.js';
   import { GetPivotListeners, GetPivots } from '../../api/server.js';
   import { GuiActionGroups } from '../../commands/GuiActions.js';
   import CommandModal from '../../components/ui/CommandModal.svelte';
@@ -101,7 +111,7 @@
     }
   }
 
-  async function openShell(sid) {
+  async function openShell(sid, showError = true) {
     if (!sid) return;
     try {
       const shell = await StartShell(sid, '', true, 24, 100);
@@ -120,6 +130,7 @@
       activeTabBySession = { ...activeTabBySession, [sid]: shell.id };
       eventsActive = false;
     } catch (error) {
+      if (!showError) throw error;
       await dialog.alert(`Could not open shell: ${error}`);
     }
   }
@@ -141,11 +152,17 @@
       }
       acts.push({ id: 'screenshot', icon: TAB_META.screenshot.icon, label: 'Take Screenshot' });
     }
+    acts.push(
+      { id: 'discoverNeighbors', icon: 'fas fa-network-wired', label: 'Discover Neighbors' },
+      { id: 'discoverSweep', icon: 'fas fa-search-location', label: 'Ping Sweep...' },
+      { id: 'clearDiscoveries', icon: 'fas fa-eraser', label: 'Clear Discovered Devices' },
+    );
     return acts;
   }
 
   let activeCommand = null;
   let activeCommandUsesSession = false;
+  let activeCommandTargetIDs = [];
   let topPaneHeight = 50;
   let dragging = false;
 
@@ -153,6 +170,8 @@
   let contextMenuX = 0;
   let contextMenuY = 0;
   let contextMenuTarget = '';
+  let contextMenuKind = 'agent';
+  let contextDevice = null;
   let showGlobalMenu = null;
 
   let showListeners = false;
@@ -168,6 +187,15 @@
   let automationRules = [];
   let pivotGraph = null;
   let pivotListeners = [];
+  let networkDiscoveries = [];
+  $: discoveredHosts = dedupeDiscoveries(networkDiscoveries);
+  let selectedItemKeys = [];
+  $: selectedAgentIDs = selectedItemKeys
+    .filter((key) => key.startsWith('agent:'))
+    .map((key) => key.slice(6));
+  $: selectedDiscoveryKeys = selectedItemKeys
+    .filter((key) => key.startsWith('device:'))
+    .map((key) => key.slice(7));
   let agentFilter = '';
   let agentViewMode = 'table';
 
@@ -178,12 +206,19 @@
   $: filteredData = combinedData.filter((agent) => {
     const needle = agentFilter.trim().toLowerCase();
     if (!needle) return true;
-    return [
+    const agentMatches = [
       agent.ID, agent.Name, agent.Hostname, agent.Username, agent.OS, agent.Arch,
       agent.Transport, agent.RemoteAddress, agent.Filename, agent.ProcessName, agent.PID,
       isAgentOnline(agent) ? 'online' : 'offline',
       agent._kind,
     ].some((value) => String(value || '').toLowerCase().includes(needle));
+    const deviceMatches = networkDiscoveries
+      .filter((device) => device.agentID === agent.ID)
+      .some((device) => [
+        device.ip, device.mac, device.hostname, device.vendor, device.osHint,
+        device.method, 'device', 'discovered',
+      ].some((value) => String(value || '').toLowerCase().includes(needle)));
+    return agentMatches || deviceMatches;
   });
   $: graphData = (() => {
     if (!agentFilter.trim()) return combinedData;
@@ -206,6 +241,19 @@
   $: contextAgent = combinedData.find((a) => a.ID === contextMenuTarget);
   $: contextCoreActions = coreActionsFor(contextAgent);
   $: contextDangerActions = dangerActionsFor(contextAgent);
+  $: contextDeviceActions = contextDevice ? [
+    { id: 'copyDeviceIP', icon: 'fas fa-copy', label: 'Copy IP Address' },
+    ...(contextDevice.mac
+      ? [{ id: 'copyDeviceMAC', icon: 'fas fa-copy', label: 'Copy MAC Address' }]
+      : []),
+  ] : [];
+  $: contextDeviceDangerActions = contextDevice ? [{
+    id: 'removeDiscoveries',
+    icon: 'fas fa-trash-alt',
+    label: selectedDiscoveryKeys.length > 1
+      ? `Remove Selected (${selectedDiscoveryKeys.length})`
+      : 'Remove Discovered Device',
+  }] : [];
   $: matchingAutomationRules = contextAgent
     ? automationRules.filter((rule) => rule.enabled && matchesAutomationTarget(contextAgent, rule))
     : [];
@@ -254,6 +302,14 @@
     return stop;
   });
 
+  onMount(() => {
+    refreshNetworkDiscoveries();
+    return onNetworkDiscoveryUpdated((devices) => {
+      networkDiscoveries = devices || [];
+      pruneDiscoverySelection();
+    });
+  });
+
   onMount(() => startPolling(refreshPivotGraph, 5000));
 
   async function refreshAutomationRules() {
@@ -273,6 +329,172 @@
     } catch (error) {
       console.error('Could not load pivot graph:', error);
     }
+  }
+
+  async function refreshNetworkDiscoveries() {
+    try {
+      networkDiscoveries = await GetNetworkDiscoveries();
+      pruneDiscoverySelection();
+    } catch (error) {
+      console.error('Could not load network discoveries:', error);
+    }
+  }
+
+  function discoveryKey(device) {
+    return device.key || hostIdentity(device);
+  }
+
+  function hostIdentity(device) {
+    const mac = String(device.mac || '').trim().toLowerCase().replaceAll('-', ':');
+    return mac ? `mac:${mac}` : `ip:${device.ip}`;
+  }
+
+  function dedupeDiscoveries(devices) {
+    const hosts = new Set();
+    const byMAC = new Map();
+    const byIP = new Map();
+
+    function mergeHosts(target, source) {
+      if (!source || target === source) return target;
+      for (const observation of source.observations) {
+        if (!target.observations.some(
+          (item) => item.agentID === observation.agentID && item.ip === observation.ip,
+        )) {
+          target.observations.push(observation);
+        }
+      }
+      for (const observerID of source.observerIDs) {
+        if (!target.observerIDs.includes(observerID)) target.observerIDs.push(observerID);
+      }
+      if (!target.hostname && source.hostname) target.hostname = source.hostname;
+      if (!target.vendor && source.vendor) target.vendor = source.vendor;
+      if (!target.osHint && source.osHint) {
+        target.osHint = source.osHint;
+        target.ttl = source.ttl;
+      }
+      if (source.lastSeen > target.lastSeen) {
+        target.lastSeen = source.lastSeen;
+        target.method = source.method || target.method;
+      }
+      for (const [key, host] of byMAC) {
+        if (host === source) byMAC.set(key, target);
+      }
+      for (const [key, host] of byIP) {
+        if (host === source) byIP.set(key, target);
+      }
+      hosts.delete(source);
+      return target;
+    }
+
+    for (const device of devices || []) {
+      const mac = String(device.mac || '').trim().toLowerCase().replaceAll('-', ':');
+      const macMatch = mac ? byMAC.get(mac) : null;
+      const ipMatch = byIP.get(device.ip);
+      let existing = mergeHosts(macMatch || ipMatch, macMatch && ipMatch ? ipMatch : null);
+      const observation = { agentID: device.agentID, ip: device.ip };
+      if (!existing) {
+        existing = {
+          ...device,
+          key: hostIdentity(device),
+          observations: [observation],
+          observerIDs: [device.agentID],
+        };
+        hosts.add(existing);
+      } else {
+        if (!existing.observations.some(
+          (item) => item.agentID === observation.agentID && item.ip === observation.ip,
+        )) {
+          existing.observations.push(observation);
+        }
+        if (!existing.observerIDs.includes(device.agentID)) {
+          existing.observerIDs.push(device.agentID);
+        }
+        if (!existing.hostname && device.hostname) existing.hostname = device.hostname;
+        if (!existing.vendor && device.vendor) existing.vendor = device.vendor;
+        if (!existing.osHint && device.osHint) {
+          existing.osHint = device.osHint;
+          existing.ttl = device.ttl;
+        }
+        if (device.lastSeen > existing.lastSeen) {
+          existing.lastSeen = device.lastSeen;
+          existing.method = device.method || existing.method;
+        }
+      }
+
+      if (mac) {
+        existing.mac = mac;
+        existing.key = `mac:${mac}`;
+        byMAC.set(mac, existing);
+      }
+      byIP.set(device.ip, existing);
+    }
+
+    return [...hosts].map((host) => ({
+      ...host,
+      observerIDs: [...host.observerIDs].sort(),
+      observations: [...host.observations].sort((a, b) =>
+        a.agentID.localeCompare(b.agentID) || a.ip.localeCompare(b.ip)),
+    }));
+  }
+
+  function pruneDiscoverySelection() {
+    const available = new Set(dedupeDiscoveries(networkDiscoveries).map(discoveryKey));
+    setSelectedItems(selectedItemKeys.filter(
+      (key) => !key.startsWith('device:') || available.has(key.slice(7)),
+    ));
+  }
+
+  function selectAgent({ id, ids, additive }) {
+    if (ids) {
+      replaceSelection(ids, selectedDiscoveryKeys);
+      return;
+    }
+    const key = `agent:${id}`;
+    if (!additive) {
+      selectedItemKeys = [key];
+      interactingSession = id;
+      return;
+    }
+    toggleSelection(key);
+  }
+
+  function selectDiscovery({ key, keys, additive }) {
+    if (keys) {
+      replaceSelection(selectedAgentIDs, keys);
+      return;
+    }
+    const itemKey = `device:${key}`;
+    if (!additive) {
+      selectedItemKeys = [itemKey];
+      return;
+    }
+    toggleSelection(itemKey);
+  }
+
+  function toggleSelection(key) {
+    setSelectedItems(selectedItemKeys.includes(key)
+      ? selectedItemKeys.filter((selected) => selected !== key)
+      : [...selectedItemKeys, key]);
+  }
+
+  function replaceSelection(agentIDs, deviceKeys) {
+    setSelectedItems([
+      ...agentIDs.map((id) => `agent:${id}`),
+      ...deviceKeys.map((key) => `device:${key}`),
+    ]);
+  }
+
+  function setSelectedItems(nextKeys) {
+    const unique = [...new Set(nextKeys)];
+    if (
+      unique.length === selectedItemKeys.length &&
+      unique.every((key) => selectedItemKeys.includes(key))
+    ) return;
+    selectedItemKeys = unique;
+  }
+
+  function syncGraphSelection({ agentIDs, deviceKeys }) {
+    replaceSelection(agentIDs, deviceKeys);
   }
 
   function setAgentViewMode(mode) {
@@ -318,47 +540,157 @@
   }
 
   function openAgentContextMenu(nativeEvent, agent) {
+    if (!selectedAgentIDs.includes(agent.ID)) {
+      selectedItemKeys = [`agent:${agent.ID}`];
+    }
+    interactingSession = agent.ID;
     showContextMenu = true;
     contextMenuX = nativeEvent.clientX;
     contextMenuY = nativeEvent.clientY;
     contextMenuTarget = agent.ID;
+    contextMenuKind = 'agent';
+    contextDevice = null;
+  }
+
+  function openDeviceContextMenu(nativeEvent, deviceData) {
+    const host = discoveredHosts.find((item) => discoveryKey(item) === deviceData.key);
+    if (!host) return;
+    if (!selectedDiscoveryKeys.includes(deviceData.key)) {
+      selectedItemKeys = [`device:${deviceData.key}`];
+    }
+    showContextMenu = true;
+    contextMenuX = nativeEvent.clientX;
+    contextMenuY = nativeEvent.clientY;
+    contextMenuTarget = '';
+    contextMenuKind = 'device';
+    contextDevice = host;
   }
 
   function handleMenuSelect(event) {
     const payload = event.detail;
     showContextMenu = false;
 
-    if (contextMenuTarget) interactingSession = contextMenuTarget;
-
     if (payload.type === 'core') {
       const action = payload.action;
+      if (contextMenuKind === 'device') {
+        handleDeviceAction(action);
+        return;
+      }
+      const targetIDs = commandTargetIDs();
       if (TAB_IDS.includes(action)) {
-        openTab(contextMenuTarget, action);
+        openTabsForTargets(targetIDs, action);
       } else if (action === 'newShell') {
-        openShell(contextMenuTarget);
+        openShellsForTargets(targetIDs);
       } else if (action === 'kill') {
-        killAgent(contextMenuTarget);
+        killAgents(targetIDs);
       } else if (action === 'removeBeacon') {
-        removeBeacon(contextMenuTarget);
+        removeBeacons(targetIDs);
       } else if (action === 'rename') {
-        renameAgent(contextMenuTarget);
+        renameAgents(targetIDs);
+      } else if (action === 'discoverNeighbors') {
+        discoverNetworks(targetIDs, 'arp');
+      } else if (action === 'discoverSweep') {
+        promptNetworkSweep(targetIDs);
+      } else if (action === 'clearDiscoveries') {
+        clearNetworkDiscoveries(targetIDs);
       }
       return;
     }
 
     if (payload.command.automationRuleID) {
-      runAutomation(payload.command.automationRuleID, contextMenuTarget);
+      runAutomation(payload.command.automationRuleID, commandTargetIDs());
       return;
     }
 
-    selectCommand(payload.command, true);
+    selectCommand(payload.command, true, commandTargetIDs());
   }
 
-  async function runAutomation(ruleID, targetID) {
+  function commandTargetIDs() {
+    return selectedAgentIDs.includes(contextMenuTarget)
+      ? [...selectedAgentIDs]
+      : [contextMenuTarget].filter(Boolean);
+  }
+
+  function agentsForIDs(targetIDs) {
+    const wanted = new Set(targetIDs);
+    return combinedData.filter((agent) => wanted.has(agent.ID));
+  }
+
+  function compatibleTargets(targetIDs, action) {
+    const agents = agentsForIDs(targetIDs);
+    if (action === 'tasks') return agents.filter((agent) => agent._kind === 'beacon');
+    if (['newShell', 'fileBrowser', 'processExplorer', 'screenshot'].includes(action)) {
+      return agents.filter((agent) => agent._kind === 'session');
+    }
+    if (action === 'registryBrowser') {
+      return agents.filter(
+        (agent) => agent._kind === 'session' && (agent.OS || '').toLowerCase() === 'windows',
+      );
+    }
+    return agents;
+  }
+
+  async function reportBatchFailures(label, failures, skipped = 0) {
+    if (failures.length === 0 && skipped === 0) return;
+    const details = failures
+      .map(({ id, error }) => `${id.slice(0, 8)}: ${errorMessage(error)}`)
+      .join('\n');
+    const skippedText = skipped > 0
+      ? `${skipped} selected agent${skipped === 1 ? '' : 's'} did not support this action.`
+      : '';
+    await dialog.alert(
+      [skippedText, details].filter(Boolean).join('\n\n'),
+      `${label} incomplete`,
+    );
+  }
+
+  function openTabsForTargets(targetIDs, tab) {
+    const targets = compatibleTargets(targetIDs, tab);
+    for (const agent of targets) openBackgroundTab(agent.ID, tab);
+    if (targets.some((agent) => agent.ID === contextMenuTarget)) {
+      interactingSession = contextMenuTarget;
+      activeTabBySession = { ...activeTabBySession, [contextMenuTarget]: tab };
+      eventsActive = false;
+    }
+    reportBatchFailures(tabMeta(tab)?.label || 'Action', [], targetIDs.length - targets.length);
+  }
+
+  async function openShellsForTargets(targetIDs) {
+    const targets = compatibleTargets(targetIDs, 'newShell');
+    const failures = [];
+    for (const agent of targets) {
+      try {
+        await openShell(agent.ID, false);
+      } catch (error) {
+        failures.push({ id: agent.ID, error });
+      }
+    }
+    if (targets.some((agent) => agent.ID === contextMenuTarget)) {
+      interactingSession = contextMenuTarget;
+    }
+    await reportBatchFailures('Open shell', failures, targetIDs.length - targets.length);
+  }
+
+  async function runAutomation(ruleID, targetIDs) {
     try {
-      await RunAutomationRule(ruleID, targetID);
+      await Promise.all(targetIDs.map((targetID) => RunAutomationRule(ruleID, targetID)));
     } catch (error) {
       await dialog.alert(`Could not run automation: ${errorMessage(error)}`);
+    }
+  }
+
+  async function handleDeviceAction(action) {
+    if (!contextDevice) return;
+    try {
+      if (action === 'copyDeviceIP') {
+        await copyText(contextDevice.ip);
+      } else if (action === 'copyDeviceMAC' && contextDevice.mac) {
+        await copyText(contextDevice.mac);
+      } else if (action === 'removeDiscoveries') {
+        await removeSelectedDiscoveries();
+      }
+    } catch (error) {
+      await dialog.alert(`Device action failed: ${errorMessage(error)}`);
     }
   }
 
@@ -368,50 +700,64 @@
       executeGuiAction(item.action);
       return;
     }
-    selectCommand(item, false);
+    selectCommand(item, false, []);
   }
 
-  function selectCommand(command, useSession) {
+  function selectCommand(command, useSession, targetIDs = []) {
+    activeCommandTargetIDs = [...targetIDs];
     if (!command.supported) {
       activeCommand = command;
       activeCommandUsesSession = useSession;
       return;
     }
     if (!command.needsInput) {
-      executeSliverCommand(command.path, useSession);
+      executeSliverCommand(command.path, useSession, targetIDs);
       return;
     }
     activeCommand = command;
     activeCommandUsesSession = useSession;
   }
 
-  async function killAgent(id) {
-    if (!id || !(await dialog.confirm('Kill this agent?', 'Confirm Kill'))) return;
-    try {
-      await KillAgent(id);
-      closeAgentWorkspace(id);
-      refreshAgents();
-    } catch (error) {
-      await dialog.alert(`Kill failed: ${error}`);
-    }
+  async function killAgents(targetIDs) {
+    if (targetIDs.length === 0 || !(await dialog.confirm(
+      `Kill ${targetIDs.length} selected agent${targetIDs.length === 1 ? '' : 's'}?`,
+      'Confirm Kill',
+    ))) return;
+    const results = await Promise.allSettled(targetIDs.map((id) => KillAgent(id)));
+    const failures = [];
+    results.forEach((result, index) => {
+      const id = targetIDs[index];
+      if (result.status === 'fulfilled') closeAgentWorkspace(id);
+      else failures.push({ id, error: result.reason });
+    });
+    refreshAgents();
+    await reportBatchFailures('Kill', failures);
   }
 
-  async function removeBeacon(id) {
-    if (!id || !(await dialog.confirm(
-      'Remove this beacon record? This also permanently deletes all tasks associated with it.',
+  async function removeBeacons(targetIDs) {
+    const targets = compatibleTargets(targetIDs, 'tasks');
+    if (targets.length === 0 || !(await dialog.confirm(
+      `Remove ${targets.length} selected beacon record${targets.length === 1 ? '' : 's'}? This also permanently deletes all associated tasks.`,
       'Remove Beacon Record',
     ))) return;
-    try {
-      await RemoveBeacon(id);
-      closeAgentWorkspace(id);
-      refreshAgents();
-    } catch (error) {
-      await dialog.alert(`Remove failed: ${error}`);
-    }
+    const results = await Promise.allSettled(targets.map((agent) => RemoveBeacon(agent.ID)));
+    const failures = [];
+    results.forEach((result, index) => {
+      const id = targets[index].ID;
+      if (result.status === 'fulfilled') closeAgentWorkspace(id);
+      else failures.push({ id, error: result.reason });
+    });
+    refreshAgents();
+    await reportBatchFailures(
+      'Remove beacon',
+      failures,
+      targetIDs.length - targets.length,
+    );
   }
 
   function closeAgentWorkspace(id) {
     if (interactingSession === id) interactingSession = '';
+    selectedItemKeys = selectedItemKeys.filter((key) => key !== `agent:${id}`);
     for (const tab of openTabsBySession[id] || []) {
       if (tab.startsWith('shell-')) CloseShell(tab).catch(() => {});
     }
@@ -428,15 +774,94 @@
     shellsByID = remainingShells;
   }
 
-  async function renameAgent(id) {
-    if (!id) return;
-    const name = await dialog.prompt('New name for this agent:', 'Rename Agent');
+  async function renameAgents(targetIDs) {
+    if (targetIDs.length === 0) return;
+    const name = await dialog.prompt(
+      `New name for ${targetIDs.length} selected agent${targetIDs.length === 1 ? '' : 's'}:`,
+      'Rename Agent',
+    );
     if (!name) return;
+    const results = await Promise.allSettled(
+      targetIDs.map((id) => RenameAgent(id, name)),
+    );
+    const failures = results.flatMap((result, index) =>
+      result.status === 'rejected'
+        ? [{ id: targetIDs[index], error: result.reason }]
+        : []);
+    refreshAgents();
+    await reportBatchFailures('Rename', failures);
+  }
+
+  async function discoverNetworks(targetIDs, method, cidr = '') {
+    if (targetIDs.length === 0) return;
+    const results = await Promise.allSettled(
+      targetIDs.map((id) => DiscoverNetwork(id, method, cidr)),
+    );
+    const failures = results.flatMap((result, index) =>
+      result.status === 'rejected'
+        ? [{ id: targetIDs[index], error: result.reason }]
+        : []);
+    await refreshNetworkDiscoveries();
+    if (networkDiscoveries.some((device) => targetIDs.includes(device.agentID))) {
+      setAgentViewMode('graph');
+    } else if (failures.length === 0) {
+      await dialog.alert('No devices were discovered.', 'Network Discovery');
+    }
+    await reportBatchFailures('Network discovery', failures);
+  }
+
+  async function promptNetworkSweep(targetIDs) {
+    const cidr = await dialog.prompt(
+      'IPv4 CIDR to sweep (maximum /24):',
+      'Network Discovery',
+      '192.168.1.0/24',
+    );
+    if (!cidr) return;
+    await discoverNetworks(targetIDs, 'sweep', cidr);
+  }
+
+  async function clearNetworkDiscoveries(targetIDs) {
+    if (targetIDs.length === 0 || !(await dialog.confirm(
+      `Clear all discovered devices beneath ${targetIDs.length} selected agent${targetIDs.length === 1 ? '' : 's'}?`,
+      'Clear Network Discoveries',
+    ))) return;
+    const results = await Promise.allSettled(
+      targetIDs.map((id) => ClearNetworkDiscoveries(id)),
+    );
+    const failures = results.flatMap((result, index) =>
+      result.status === 'rejected'
+        ? [{ id: targetIDs[index], error: result.reason }]
+        : []);
+    await refreshNetworkDiscoveries();
+    await reportBatchFailures('Clear discoveries', failures);
+  }
+
+  async function removeSelectedDiscoveries() {
+    if (selectedDiscoveryKeys.length === 0) return;
+    const count = selectedDiscoveryKeys.length;
+    if (!(await dialog.confirm(
+      `Remove ${count} selected discovered device${count === 1 ? '' : 's'}?`,
+      'Remove Discovered Devices',
+    ))) return;
+
+    const byAgent = new Map();
+    for (const key of selectedDiscoveryKeys) {
+      const host = discoveredHosts.find((device) => discoveryKey(device) === key);
+      for (const observation of host?.observations || []) {
+        if (!byAgent.has(observation.agentID)) byAgent.set(observation.agentID, []);
+        byAgent.get(observation.agentID).push(observation.ip);
+      }
+    }
+
     try {
-      await RenameAgent(id, name);
-      refreshAgents();
+      await Promise.all(
+        [...byAgent.entries()].map(([agentID, ips]) =>
+          RemoveNetworkDiscoveries(agentID, ips)),
+      );
+      selectedItemKeys = selectedItemKeys.filter((key) => !key.startsWith('device:'));
+      await refreshNetworkDiscoveries();
     } catch (error) {
-      await dialog.alert(`Rename failed: ${error}`);
+      await dialog.alert(`Could not remove discoveries: ${errorMessage(error)}`);
     }
   }
 
@@ -444,15 +869,32 @@
     dispatch('navigate', { view, serverTab });
   }
 
-  function executeSliverCommand(cmd, useSession) {
-    if (useSession && interactingSession) {
-      openTab(interactingSession, 'console');
-      dispatchCommand(interactingSession, cmd);
+  function openBackgroundTab(sid, tab) {
+    const tabs = openTabsBySession[sid] || [];
+    if (!tabs.includes(tab)) {
+      openTabsBySession = { ...openTabsBySession, [sid]: [...tabs, tab] };
+    }
+    if (!activeTabBySession[sid]) {
+      activeTabBySession = { ...activeTabBySession, [sid]: tab };
+    }
+  }
+
+  function executeSliverCommand(cmd, useSession, targetIDs = activeCommandTargetIDs) {
+    if (useSession && targetIDs.length > 0) {
+      for (const id of targetIDs) {
+        openBackgroundTab(id, 'console');
+        dispatchCommand(id, cmd);
+      }
+      if (contextMenuTarget && targetIDs.includes(contextMenuTarget)) {
+        interactingSession = contextMenuTarget;
+        activeTabBySession = { ...activeTabBySession, [contextMenuTarget]: 'console' };
+      }
     } else {
       dispatchCommand('', cmd);
       // User explicitly requested: "if i'm on the agents tab IT SHOULD NEVER EVER SWITCH ME TO THE SERVER TAB"
     }
     activeCommand = null;
+    activeCommandTargetIDs = [];
   }
 
   function executeGuiAction(action) {
@@ -523,6 +965,17 @@
     <div class="agent-view-toolbar">
       <i class="fas fa-search"></i>
       <input class="search" placeholder="Filter agents..." bind:value={agentFilter} />
+      {#if selectedDiscoveryKeys.length > 0}
+        <button
+          type="button"
+          class="remove-discoveries"
+          title="Remove selected discovered devices"
+          on:click={removeSelectedDiscoveries}
+        >
+          <i class="fas fa-trash-alt"></i>
+          Remove selected ({selectedDiscoveryKeys.length})
+        </button>
+      {/if}
       <label for="agent-view-mode">View</label>
       <select
         id="agent-view-mode"
@@ -540,11 +993,19 @@
         <SessionsTable
           data={filteredData}
           {pivotGraph}
-          selectedId={interactingSession}
+          discoveries={discoveredHosts}
+          {selectedAgentIDs}
+          {selectedDiscoveryKeys}
           filterable={false}
           on:contextmenu={handleContextMenu}
-          on:select={(event) => interactingSession = event.detail}
+          on:select={(event) => selectAgent(event.detail)}
           on:interact={(event) => openTab(event.detail, 'console')}
+          on:discoveryselect={(event) => selectDiscovery(event.detail)}
+          on:discoverycontextmenu={(event) =>
+            openDeviceContextMenu(event.detail.event, {
+              ...event.detail.device,
+              key: discoveryKey(event.detail.device),
+            })}
         />
       {:else}
         <NetworkGraph
@@ -553,9 +1014,14 @@
           beacons={graphData.filter((agent) => agent._kind === 'beacon')}
           {pivotGraph}
           {pivotListeners}
+          discoveries={discoveredHosts}
+          {selectedAgentIDs}
+          {selectedDiscoveryKeys}
           onSelect={(id) => interactingSession = id}
           onInteract={(id) => openTab(id, 'console')}
           onContextMenu={openAgentContextMenu}
+          onSelectionChange={syncGraphSelection}
+          onDeviceContextMenu={openDeviceContextMenu}
         />
       {/if}
     </div>
@@ -635,19 +1101,30 @@
 {/if}
 {#if activeCommand}
   <CommandModal
-    sessionID={activeCommandUsesSession ? interactingSession : ''}
+    sessionID={activeCommandUsesSession
+      ? (activeCommandTargetIDs.length > 1
+        ? `${activeCommandTargetIDs.length} selected agents`
+        : activeCommandTargetIDs[0] || interactingSession)
+      : ''}
     command={activeCommand}
-    on:close={() => activeCommand = null}
-    on:execute={(event) => executeSliverCommand(event.detail.cmd, activeCommandUsesSession)}
+    on:close={() => {
+      activeCommand = null;
+      activeCommandTargetIDs = [];
+    }}
+    on:execute={(event) =>
+      executeSliverCommand(event.detail.cmd, activeCommandUsesSession, activeCommandTargetIDs)}
   />
 {/if}
 {#if showContextMenu}
   <ContextMenu
     x={contextMenuX}
     y={contextMenuY}
-    coreActions={contextCoreActions}
-    dangerActions={contextDangerActions}
-    categories={contextCategories}
+    coreActions={contextMenuKind === 'device' ? contextDeviceActions : contextCoreActions}
+    footerActions={contextMenuKind === 'device'
+      ? []
+      : [{ id: 'rename', icon: 'fas fa-pen', label: 'Rename' }]}
+    dangerActions={contextMenuKind === 'device' ? contextDeviceDangerActions : contextDangerActions}
+    categories={contextMenuKind === 'device' ? [] : contextCategories}
     on:select={handleMenuSelect}
   />
 {/if}
@@ -673,6 +1150,19 @@
     margin-left: 4px;
     min-width: 64px;
     text-align: right;
+  }
+
+  .remove-discoveries {
+    padding: 4px 8px;
+    border: 1px solid var(--danger-color);
+    border-radius: 3px;
+    background: rgba(255, 74, 74, 0.1);
+    color: var(--danger-color);
+    cursor: pointer;
+  }
+
+  .remove-discoveries:hover {
+    background: rgba(255, 74, 74, 0.2);
   }
 
   .view-select {

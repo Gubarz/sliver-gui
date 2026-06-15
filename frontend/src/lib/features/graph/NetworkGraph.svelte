@@ -17,11 +17,16 @@
     beacons = [],
     pivotGraph = null,
     pivotListeners = [],
+    discoveries = [],
+    selectedAgentIDs = [],
+    selectedDiscoveryKeys = [],
     embedded = false,
     onClose = () => {},
     onSelect = () => {},
     onInteract = () => {},
     onContextMenu = () => {},
+    onSelectionChange = () => {},
+    onDeviceContextMenu = () => {},
   } = $props();
 
   const nodeTypes = { box: GraphNode };
@@ -38,6 +43,7 @@
   const SERVER_W = 180, SERVER_H = 44;
   const LISTENER_W = 220, LISTENER_H = 40;
   const NODE_W = 210, NODE_H = 88;
+  const DEVICE_W = 210, DEVICE_H = 88;
 
   function c2Details(value) {
     const raw = String(value || 'unknown');
@@ -118,15 +124,35 @@
         targetPosition: Position.Top,
         sourcePosition: Position.Bottom,
         draggable: true,
+        selected: n.selected ?? false,
       };
     });
   }
 
-  function preservePositions(nextNodes) {
+  function preservePositions(nextNodes, nextEdges) {
     const positions = new Map(nodes.map((node) => [node.id, node.position]));
+    const layoutPositions = new Map(nextNodes.map((node) => [node.id, node.position]));
+    const parentByNode = new Map(nextEdges.map((edge) => [edge.target, edge.source]));
     return nextNodes.map((node) => {
+      const previous = nodes.find((current) => current.id === node.id);
       const position = positions.get(node.id);
-      return position ? { ...node, position } : node;
+      if (position) return {
+        ...node,
+        position,
+        selected: previous?.selected ?? node.selected ?? false,
+      };
+
+      const parentID = parentByNode.get(node.id);
+      const oldParent = positions.get(parentID);
+      const layoutParent = layoutPositions.get(parentID);
+      if (!oldParent || !layoutParent) return node;
+      return {
+        ...node,
+        position: {
+          x: node.position.x + oldParent.x - layoutParent.x,
+          y: node.position.y + oldParent.y - layoutParent.y,
+        },
+      };
     });
   }
 
@@ -142,6 +168,8 @@
       ...pivotRelations,
       ...(pivotListeners || []).map((listener) =>
         `${listener.ParentSessionID}:${listener.ID}:${listener.Type}:${listener.BindAddress}`),
+      ...(discoveries || []).map((device) =>
+        `${device.key}:${(device.observerIDs || [device.agentID]).join(',')}:${device.ip}:${device.mac}:${device.hostname}:${device.vendor}:${device.osHint}:${device.ttl}:${device.method}:${device.lastSeen}`),
     ].sort().join('|');
   }
 
@@ -195,6 +223,7 @@
           addr: agentRemoteAddress(impl, parentBySession, allAgents),
           dead: !online,
         },
+        selected: selectedAgentIDs.includes(impl.ID),
       });
     }
 
@@ -253,7 +282,44 @@
       });
     }
 
-    nodes = preservePositions(layout(rawNodes, rawEdges));
+    for (const device of discoveries || []) {
+      const observerIDs = (device.observerIDs || [device.agentID])
+        .filter((agentID) => allAgentIds.has(agentID));
+      if (observerIDs.length === 0) continue;
+      const key = device.key || `${device.agentID}|${device.ip}`;
+      const deviceID = `d_${key}`;
+      rawNodes.push({
+        id: deviceID,
+        w: DEVICE_W,
+        h: DEVICE_H,
+        data: {
+          variant: 'device',
+          ip: device.ip,
+          mac: device.mac || '',
+          hostname: device.hostname || '',
+          vendor: device.vendor || '',
+          osHint: device.osHint || '',
+          ttl: device.ttl || 0,
+          method: device.method || 'discovery',
+          lastSeen: device.lastSeen || 0,
+          agentID: observerIDs[0],
+          observerIDs,
+          key,
+        },
+        selected: selectedDiscoveryKeys.includes(key),
+      });
+      for (const observerID of observerIDs) {
+        rawEdges.push({
+          id: `e_${observerID}_${deviceID}`,
+          source: observerID,
+          target: deviceID,
+          style: 'stroke:#58a6ff;stroke-width:1.5;stroke-dasharray:5',
+          animated: false,
+        });
+      }
+    }
+
+    nodes = preservePositions(layout(rawNodes, rawEdges), rawEdges);
     edges = rawEdges;
   }
 
@@ -266,10 +332,22 @@
     build();
   });
 
+  function handleSelectionChange(selection) {
+    onSelectionChange({
+      agentIDs: selection.nodes
+        .filter((node) => node.data?.variant === 'agent')
+        .map((node) => node.id),
+      deviceKeys: selection.nodes
+        .filter((node) => node.data?.variant === 'device')
+        .map((node) => node.data.key),
+    });
+  }
+
   function handleNodeClick(evt) {
     const node = evt?.node || evt?.detail?.node;
+    const nativeEvent = evt?.event || evt?.detail?.event;
+    if (node?.data?.variant === 'device') return;
     if (node && node.data && node.data.variant === 'agent') {
-      const nativeEvent = evt?.event || evt?.detail?.event;
       if (!embedded || nativeEvent?.detail === 2) onInteract(node.id);
       else onSelect(node.id);
     }
@@ -284,6 +362,10 @@
     }
     
     const node = evt?.node || evt?.detail?.node;
+    if (node?.data?.variant === 'device') {
+      onDeviceContextMenu(nativeEvent, node.data);
+      return;
+    }
     if (node && node.data && node.data.variant === 'agent') {
       const source = node.data.kind === 'beacon' ? beacons : sessions;
       const agent = source.find((item) => item.ID === node.id);
@@ -306,6 +388,7 @@
     <div class="legend">
       <span><span class="sw session"></span> session</span>
       <span><span class="sw beacon"></span> beacon</span>
+      <span><span class="sw device"></span> discovered</span>
       <span class="hint">click an agent to interact</span>
     </div>
   </svelte:fragment>
@@ -320,6 +403,8 @@
         minZoom={0.2}
         onnodeclick={handleNodeClick}
         onnodecontextmenu={handleNodeContextMenu}
+        onselectionchange={handleSelectionChange}
+        multiSelectionKey={['Control', 'Meta']}
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={18} />
@@ -357,5 +442,6 @@
   }
   .legend .sw.session { background: var(--success-color); }
   .legend .sw.beacon { background: #d6a23e; }
+  .legend .sw.device { background: #58a6ff; }
   .legend .hint { font-style: italic; }
 </style>

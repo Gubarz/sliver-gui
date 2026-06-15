@@ -10,6 +10,8 @@ export function CancelBeaconTask(arg1:string):Promise<void>;
 
 export function ClearAutomationHistory():Promise<void>;
 
+export function ClearNetworkDiscoveries(arg1:string):Promise<void>;
+
 export function CloseShell(arg1:string):Promise<void>;
 
 export function CompleteCommand(arg1:string,arg2:string):Promise<Array<string>>;
@@ -27,6 +29,8 @@ export function DeleteImplantBuild(arg1:string):Promise<void>;
 export function DeleteProfile(arg1:string):Promise<void>;
 
 export function DeleteRegistryEntry(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
+export function DiscoverNetwork(arg1:string,arg2:string,arg3:string):Promise<Array<main.NetworkDiscovery>>;
 
 export function DownloadFile(arg1:string,arg2:string):Promise<void>;
 
@@ -61,6 +65,8 @@ export function GetImplantBuilds():Promise<clientpb.ImplantBuilds>;
 export function GetJobs():Promise<clientpb.Jobs>;
 
 export function GetLoot():Promise<clientpb.AllLoot>;
+
+export function GetNetworkDiscoveries():Promise<Array<main.NetworkDiscovery>>;
 
 export function GetOperators():Promise<clientpb.Operators>;
 
@@ -109,6 +115,8 @@ export function RemoveBeacon(arg1:string):Promise<void>;
 export function RemoveCredential(arg1:string):Promise<void>;
 
 export function RemoveLoot(arg1:string):Promise<void>;
+
+export function RemoveNetworkDiscoveries(arg1:string,arg2:Array<string>):Promise<void>;
 
 export function RemovePath(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 

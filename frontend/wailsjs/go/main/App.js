@@ -14,6 +14,10 @@ export function ClearAutomationHistory() {
   return window['go']['main']['App']['ClearAutomationHistory']();
 }
 
+export function ClearNetworkDiscoveries(arg1) {
+  return window['go']['main']['App']['ClearNetworkDiscoveries'](arg1);
+}
+
 export function CloseShell(arg1) {
   return window['go']['main']['App']['CloseShell'](arg1);
 }
@@ -48,6 +52,10 @@ export function DeleteProfile(arg1) {
 
 export function DeleteRegistryEntry(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['DeleteRegistryEntry'](arg1, arg2, arg3, arg4);
+}
+
+export function DiscoverNetwork(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DiscoverNetwork'](arg1, arg2, arg3);
 }
 
 export function DownloadFile(arg1, arg2) {
@@ -116,6 +124,10 @@ export function GetJobs() {
 
 export function GetLoot() {
   return window['go']['main']['App']['GetLoot']();
+}
+
+export function GetNetworkDiscoveries() {
+  return window['go']['main']['App']['GetNetworkDiscoveries']();
 }
 
 export function GetOperators() {
@@ -212,6 +224,10 @@ export function RemoveCredential(arg1) {
 
 export function RemoveLoot(arg1) {
   return window['go']['main']['App']['RemoveLoot'](arg1);
+}
+
+export function RemoveNetworkDiscoveries(arg1, arg2) {
+  return window['go']['main']['App']['RemoveNetworkDiscoveries'](arg1, arg2);
 }
 
 export function RemovePath(arg1, arg2, arg3) {

@@ -1,4 +1,5 @@
 import {
+  ClipboardSetText,
   EventsOn,
   OnFileDrop,
   OnFileDropOff,
@@ -26,6 +27,10 @@ export function onAutomationRun(callback) {
   return EventsOn('automation-run', callback);
 }
 
+export function onNetworkDiscoveryUpdated(callback) {
+  return EventsOn('network-discovery-updated', callback);
+}
+
 export function onFileDrop(callback) {
   fileDropListeners.add(callback);
   if (!fileDropRegistered) {
@@ -42,6 +47,10 @@ export function onFileDrop(callback) {
       fileDropRegistered = false;
     }
   };
+}
+
+export function copyText(text) {
+  return ClipboardSetText(text);
 }
 
 export function minimizeWindow() {

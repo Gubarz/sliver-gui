@@ -1,5 +1,5 @@
 export namespace clientpb {
-	
+
 	export class Loot {
 	    ID?: string;
 	    Name?: string;
@@ -7,11 +7,11 @@ export namespace clientpb {
 	    OriginHostUUID?: string;
 	    Size?: number;
 	    File?: commonpb.File;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Loot(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -21,7 +21,7 @@ export namespace clientpb {
 	        this.Size = source["Size"];
 	        this.File = this.convertValues(source["File"], commonpb.File);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -42,16 +42,16 @@ export namespace clientpb {
 	}
 	export class AllLoot {
 	    Loot?: Loot[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AllLoot(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Loot = this.convertValues(source["Loot"], Loot);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -100,11 +100,11 @@ export namespace clientpb {
 	    Locale?: string;
 	    FirstContact?: number;
 	    Integrity?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Beacon(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -148,11 +148,11 @@ export namespace clientpb {
 	    Request?: number[];
 	    Response?: number[];
 	    Description?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BeaconTask(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -169,17 +169,17 @@ export namespace clientpb {
 	export class BeaconTasks {
 	    BeaconID?: string;
 	    Tasks?: BeaconTask[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BeaconTasks(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.BeaconID = source["BeaconID"];
 	        this.Tasks = this.convertValues(source["Tasks"], BeaconTask);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -200,16 +200,16 @@ export namespace clientpb {
 	}
 	export class Beacons {
 	    Beacons?: Beacon[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Beacons(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Beacons = this.convertValues(source["Beacons"], Beacon);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -236,11 +236,11 @@ export namespace clientpb {
 	    Type?: string;
 	    KeyAlgorithm?: string;
 	    ID?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CertificateData(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CN = source["CN"];
@@ -254,16 +254,16 @@ export namespace clientpb {
 	}
 	export class CertificateInfo {
 	    info?: CertificateData[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CertificateInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.info = this.convertValues(source["info"], CertificateData);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -291,11 +291,11 @@ export namespace clientpb {
 	    IsCracked?: boolean;
 	    OriginHostUUID?: string;
 	    Collection?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Credential(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -310,16 +310,16 @@ export namespace clientpb {
 	}
 	export class Credentials {
 	    Credentials?: Credential[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Credentials(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Credentials = this.convertValues(source["Credentials"], Credential);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -359,11 +359,11 @@ export namespace clientpb {
 	    MtlsCert?: string;
 	    MtlsKey?: string;
 	    Stage?: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImplantBuild(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -393,11 +393,11 @@ export namespace clientpb {
 	    Type?: string;
 	    Name?: string;
 	    Value?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ResourceID(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -415,11 +415,11 @@ export namespace clientpb {
 	    Thread?: boolean;
 	    Unicode?: boolean;
 	    OEP?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ShellcodeConfig(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Entropy = source["Entropy"];
@@ -437,11 +437,11 @@ export namespace clientpb {
 	    Priority?: number;
 	    URL?: string;
 	    Options?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImplantC2(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -501,11 +501,11 @@ export namespace clientpb {
 	    TrafficEncoders?: string[];
 	    Extension?: string;
 	    Assets?: commonpb.File[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImplantConfig(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -559,7 +559,7 @@ export namespace clientpb {
 	        this.Extension = source["Extension"];
 	        this.Assets = this.convertValues(source["Assets"], commonpb.File);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -582,18 +582,18 @@ export namespace clientpb {
 	    Configs?: Record<string, ImplantConfig>;
 	    ResourceIDs?: Record<string, ResourceID>;
 	    staged?: Record<string, boolean>;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImplantBuilds(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Configs = this.convertValues(source["Configs"], ImplantConfig, true);
 	        this.ResourceIDs = this.convertValues(source["ResourceIDs"], ResourceID, true);
 	        this.staged = source["staged"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -612,24 +612,24 @@ export namespace clientpb {
 		    return a;
 		}
 	}
-	
-	
+
+
 	export class ImplantProfile {
 	    ID?: string;
 	    Name?: string;
 	    Config?: ImplantConfig;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImplantProfile(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
 	        this.Name = source["Name"];
 	        this.Config = this.convertValues(source["Config"], ImplantConfig);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -650,16 +650,16 @@ export namespace clientpb {
 	}
 	export class ImplantProfiles {
 	    Profiles?: ImplantProfile[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImplantProfiles(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Profiles = this.convertValues(source["Profiles"], ImplantProfile);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -686,11 +686,11 @@ export namespace clientpb {
 	    Port?: number;
 	    Domains?: string[];
 	    ProfileName?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Job(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -704,16 +704,16 @@ export namespace clientpb {
 	}
 	export class Jobs {
 	    Active?: Job[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Jobs(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Active = this.convertValues(source["Active"], Job);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -732,15 +732,15 @@ export namespace clientpb {
 		    return a;
 		}
 	}
-	
+
 	export class Operator {
 	    Online?: boolean;
 	    Name?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Operator(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Online = source["Online"];
@@ -749,16 +749,16 @@ export namespace clientpb {
 	}
 	export class Operators {
 	    Operators?: Operator[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Operators(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Operators = this.convertValues(source["Operators"], Operator);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -804,11 +804,11 @@ export namespace clientpb {
 	    Locale?: string;
 	    FirstContact?: number;
 	    Integrity?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Session(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -844,11 +844,11 @@ export namespace clientpb {
 	    Session?: Session;
 	    Name?: string;
 	    Children?: PivotGraphEntry[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PivotGraphEntry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.PeerID = source["PeerID"];
@@ -856,7 +856,7 @@ export namespace clientpb {
 	        this.Name = source["Name"];
 	        this.Children = this.convertValues(source["Children"], PivotGraphEntry);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -877,16 +877,16 @@ export namespace clientpb {
 	}
 	export class PivotGraph {
 	    Children?: PivotGraphEntry[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PivotGraph(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Children = this.convertValues(source["Children"], PivotGraphEntry);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -905,21 +905,21 @@ export namespace clientpb {
 		    return a;
 		}
 	}
-	
-	
-	
+
+
+
 	export class Sessions {
 	    Sessions?: Session[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Sessions(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Sessions = this.convertValues(source["Sessions"], Session);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -938,7 +938,7 @@ export namespace clientpb {
 		    return a;
 		}
 	}
-	
+
 	export class Version {
 	    Major?: number;
 	    Minor?: number;
@@ -948,11 +948,11 @@ export namespace clientpb {
 	    CompiledAt?: number;
 	    OS?: string;
 	    Arch?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Version(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Major = source["Major"];
@@ -974,11 +974,11 @@ export namespace clientpb {
 	    OriginalFile?: string;
 	    Sha256?: string;
 	    Content?: number[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new WebContent(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
@@ -995,18 +995,18 @@ export namespace clientpb {
 	    ID?: string;
 	    Name?: string;
 	    Contents?: Record<string, WebContent>;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Website(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ID = source["ID"];
 	        this.Name = source["Name"];
 	        this.Contents = this.convertValues(source["Contents"], WebContent, true);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1027,16 +1027,16 @@ export namespace clientpb {
 	}
 	export class Websites {
 	    Websites?: Website[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Websites(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Websites = this.convertValues(source["Websites"], Website);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1059,15 +1059,15 @@ export namespace clientpb {
 }
 
 export namespace commonpb {
-	
+
 	export class File {
 	    Name?: string;
 	    Data?: number[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new File(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Name = source["Name"];
@@ -1082,11 +1082,11 @@ export namespace commonpb {
 	    Architecture?: string;
 	    SessionID?: number;
 	    CmdLine?: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Process(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Pid = source["Pid"];
@@ -1103,11 +1103,11 @@ export namespace commonpb {
 	    Async?: boolean;
 	    BeaconID?: string;
 	    TaskID?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Response(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Err = source["Err"];
@@ -1120,18 +1120,18 @@ export namespace commonpb {
 }
 
 export namespace main {
-	
+
 	export class AutomationFilter {
 	    os: string;
 	    arch: string;
 	    hostname: string;
 	    username: string;
 	    name: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AutomationFilter(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.os = source["os"];
@@ -1161,11 +1161,11 @@ export namespace main {
 	    runCount: number;
 	    createdAt: number;
 	    updatedAt: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AutomationRule(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -1188,7 +1188,7 @@ export namespace main {
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1221,11 +1221,11 @@ export namespace main {
 	    status: string;
 	    startedAt: number;
 	    finishedAt: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AutomationRun(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -1247,11 +1247,11 @@ export namespace main {
 	    name: string;
 	    required: boolean;
 	    variadic: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CommandArg(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -1267,11 +1267,11 @@ export namespace main {
 	    default?: string;
 	    required: boolean;
 	    boolean: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CommandFlag(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -1293,11 +1293,11 @@ export namespace main {
 	    needsInput: boolean;
 	    supported: boolean;
 	    unavailable?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CommandSchema(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -1310,7 +1310,7 @@ export namespace main {
 	        this.supported = source["supported"];
 	        this.unavailable = source["unavailable"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1333,18 +1333,18 @@ export namespace main {
 	    id: string;
 	    title: string;
 	    commands: CommandSchema[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CommandGroup(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.title = source["title"];
 	        this.commands = this.convertValues(source["commands"], CommandSchema);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1366,17 +1366,17 @@ export namespace main {
 	export class CommandCatalog {
 	    scope: string;
 	    groups: CommandGroup[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CommandCatalog(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.scope = source["scope"];
 	        this.groups = this.convertValues(source["groups"], CommandGroup);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1395,17 +1395,47 @@ export namespace main {
 		    return a;
 		}
 	}
-	
-	
-	
+
+
+
+	export class NetworkDiscovery {
+	    agentID: string;
+	    ip: string;
+	    mac: string;
+	    hostname: string;
+	    vendor: string;
+	    macType: string;
+	    osHint: string;
+	    ttl: number;
+	    method: string;
+	    lastSeen: number;
+
+	    static createFrom(source: any = {}) {
+	        return new NetworkDiscovery(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.agentID = source["agentID"];
+	        this.ip = source["ip"];
+	        this.mac = source["mac"];
+	        this.hostname = source["hostname"];
+	        this.vendor = source["vendor"];
+	        this.macType = source["macType"];
+	        this.osHint = source["osHint"];
+	        this.ttl = source["ttl"];
+	        this.method = source["method"];
+	        this.lastSeen = source["lastSeen"];
+	    }
+	}
 	export class PivotConnectionSnapshot {
 	    PeerID: number;
 	    RemoteAddress: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PivotConnectionSnapshot(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.PeerID = source["PeerID"];
@@ -1418,11 +1448,11 @@ export namespace main {
 	    Type: string;
 	    BindAddress: string;
 	    Pivots: PivotConnectionSnapshot[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PivotListenerSnapshot(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ParentSessionID = source["ParentSessionID"];
@@ -1431,7 +1461,7 @@ export namespace main {
 	        this.BindAddress = source["BindAddress"];
 	        this.Pivots = this.convertValues(source["Pivots"], PivotConnectionSnapshot);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1454,11 +1484,11 @@ export namespace main {
 	    name: string;
 	    type: string;
 	    value: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RegistryValue(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -1472,11 +1502,11 @@ export namespace main {
 	    path: string;
 	    pid: number;
 	    pty: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ShellInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -1490,7 +1520,7 @@ export namespace main {
 }
 
 export namespace sliverpb {
-	
+
 	export class FileInfo {
 	    Name?: string;
 	    IsDir?: boolean;
@@ -1500,11 +1530,11 @@ export namespace sliverpb {
 	    Link?: string;
 	    Uid?: string;
 	    Gid?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new FileInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Name = source["Name"];
@@ -1524,11 +1554,11 @@ export namespace sliverpb {
 	    timezone?: string;
 	    timezoneOffset?: number;
 	    Response?: commonpb.Response;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Ls(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Path = source["Path"];
@@ -1538,7 +1568,7 @@ export namespace sliverpb {
 	        this.timezoneOffset = source["timezoneOffset"];
 	        this.Response = this.convertValues(source["Response"], commonpb.Response);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1560,17 +1590,17 @@ export namespace sliverpb {
 	export class Ps {
 	    Processes?: commonpb.Process[];
 	    Response?: commonpb.Response;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Ps(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Processes = this.convertValues(source["Processes"], commonpb.Process);
 	        this.Response = this.convertValues(source["Response"], commonpb.Response);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1592,17 +1622,17 @@ export namespace sliverpb {
 	export class RegistrySubKeyList {
 	    Subkeys?: string[];
 	    Response?: commonpb.Response;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RegistrySubKeyList(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Subkeys = source["Subkeys"];
 	        this.Response = this.convertValues(source["Response"], commonpb.Response);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1624,17 +1654,17 @@ export namespace sliverpb {
 	export class RegistryValuesList {
 	    ValueNames?: string[];
 	    Response?: commonpb.Response;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RegistryValuesList(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ValueNames = source["ValueNames"];
 	        this.Response = this.convertValues(source["Response"], commonpb.Response);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;

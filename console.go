@@ -31,7 +31,28 @@ func (a *App) RunSessionCommand(sessionID string, line string) (string, error) {
 		return "", nil
 	}
 
-	return a.runConsoleLine(sessionID, line)
+	output, err := a.runConsoleLine(sessionID, line)
+	if err == nil && sessionID != "" && commandInvokesPing(line) {
+		if devices := parsePingDiscoveryOutput(sessionID, output); len(devices) > 0 {
+			a.storeDiscoveries(devices)
+		}
+	}
+	return output, err
+}
+
+func commandInvokesPing(line string) bool {
+	args, err := shellquote.Split(line)
+	if err != nil {
+		return false
+	}
+	for _, arg := range args {
+		name := strings.ToLower(strings.TrimSpace(arg))
+		name = strings.TrimSuffix(name, ".exe")
+		if name == "ping" || strings.HasSuffix(name, `/ping`) || strings.HasSuffix(name, `\ping`) {
+			return true
+		}
+	}
+	return false
 }
 
 func unsupportedConsoleCommand(root *cobra.Command, line string) string {

@@ -10,8 +10,10 @@
   export let data = [];
   export let pivotGraph = null;
   export const title = "Sessions table";
-  export let selectedId = null;
+  export let selectedAgentIDs = [];
   export let filterable = true;
+  export let discoveries = [];
+  export let selectedDiscoveryKeys = [];
 
   const dispatch = createEventDispatcher();
 
@@ -47,11 +49,30 @@
   function handleRightClick(e, session) {
     dispatch('contextmenu', { event: e, session });
   }
-  function handleRowClick(session) {
-    dispatch('select', session.ID);
+  function handleRowClick(event, session) {
+    dispatch('select', {
+      id: session.ID,
+      additive: event.ctrlKey || event.metaKey,
+    });
   }
   function handleRowDblClick(session) {
     dispatch('interact', session.ID);
+  }
+
+  function discoveryKey(device) {
+    return device.key || `${device.agentID}|${device.ip}`;
+  }
+
+  function selectDiscovery(event, device) {
+    event.stopPropagation();
+    dispatch('discoveryselect', {
+      key: discoveryKey(device),
+      additive: event.ctrlKey || event.metaKey,
+    });
+  }
+
+  function handleDiscoveryRightClick(event, device) {
+    dispatch('discoverycontextmenu', { event, device });
   }
 
   function getOsIcon(osName) {
@@ -94,6 +115,11 @@
       Status: online ? "Online" : "Offline",
     };
   });
+  $: discoveriesByAgent = discoveries.reduce((groups, device) => {
+    const primaryObserver = device.observerIDs?.[0] || device.agentID;
+    (groups[primaryObserver] ??= []).push(device);
+    return groups;
+  }, {});
 
   let tableColumns = [
     { key: "Status", label: "Status", width: 42 },
@@ -116,10 +142,10 @@
   {#each rows as item}
     <tr
       on:contextmenu|preventDefault={(e) => handleRightClick(e, item)}
-      on:click={() => handleRowClick(item)}
+      on:click={(event) => handleRowClick(event, item)}
       on:dblclick={() => handleRowDblClick(item)}
       class="{getPrivilegeClass(item.Username)}"
-      class:selected={selectedId === item.ID}
+      class:selected={selectedAgentIDs.includes(item.ID)}
     >
       <td style="width: {columns[0].width}px; max-width: {columns[0].width}px;">
         <span class="status" class:online={item.Online} title={item.Online ? 'Online' : 'Offline'}>
@@ -147,6 +173,36 @@
         />
       </td>
     </tr>
+    {#each discoveriesByAgent[item.ID] || [] as device (discoveryKey(device))}
+      <tr
+        class="discovery-row"
+        class:selected={selectedDiscoveryKeys.includes(discoveryKey(device))}
+        on:click={(event) => selectDiscovery(event, device)}
+        on:contextmenu|preventDefault={(event) => handleDiscoveryRightClick(event, device)}
+      >
+        <td><span class="device-status" title="Discovered device"></span></td>
+        <td title={(device.observerIDs || [item.ID]).join(', ')}>
+          {device.observerIDs?.length > 1
+            ? `${device.observerIDs.length} agents`
+            : shortAgentID(item.ID)}
+        </td>
+        <td title={item.ImplantName}>{item.ImplantName}</td>
+        <td><span class="type type-device">device</span></td>
+        <td title={device.method}>{device.method}</td>
+        <td title={device.ip}>{device.ip}</td>
+        <td title={device.hostname || 'Unknown hostname'}>{device.hostname || '-'}</td>
+        <td title={device.mac || '-'}>{device.mac || '-'}</td>
+        <td title={device.osHint || 'OS unknown'}>
+          <i class={device.osHint?.includes('Windows') ? 'fab fa-windows' : device.osHint?.includes('Unix') ? 'fab fa-linux' : 'fas fa-network-wired'}></i>
+        </td>
+        <td title={device.vendor ? `NIC vendor: ${device.vendor}` : 'NIC vendor unknown'}>{device.vendor || '-'}</td>
+        <td>-</td>
+        <td class="mono" title={device.lastSeen ? new Date(device.lastSeen).toLocaleString() : '-'}>
+          {device.lastSeen ? fmtCheckin(Math.floor(device.lastSeen / 1000), now) : '-'}
+        </td>
+        <td>-</td>
+      </tr>
+    {/each}
   {/each}
   {#if rows.length === 0}
     <tr>
@@ -170,6 +226,26 @@
   .type { padding: 1px 7px; border-radius: 10px; font-size: 0.8em; }
   .type-session { background: rgba(70,160,90,0.18); color: var(--success-color); }
   .type-beacon { background: rgba(214,162,62,0.18); color: #d6a23e; }
+  .type-device { background: rgba(88,166,255,0.18); color: #58a6ff; }
+  .device-status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #58a6ff;
+    box-shadow: 0 0 6px #58a6ff;
+  }
+  tr.discovery-row td {
+    color: var(--text-muted);
+    background: rgba(88,166,255,0.035);
+  }
+  tr.discovery-row td:nth-child(2) {
+    padding-left: 14px;
+  }
+  tr.discovery-row:hover td,
+  tr.discovery-row.selected td {
+    background: rgba(88,166,255,0.14);
+  }
   .status {
     display: inline-flex;
     align-items: center;

@@ -33,13 +33,19 @@ type App struct {
 	shells      map[string]*guiShell
 	nextShellID atomic.Uint64
 
+	discoveryMu sync.RWMutex
+	discoveries map[string]map[string]NetworkDiscovery
+
 	automation *automationEngine
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	configureDefaultArmory()
-	return &App{shells: make(map[string]*guiShell)}
+	return &App{
+		shells:      make(map[string]*guiShell),
+		discoveries: make(map[string]map[string]NetworkDiscovery),
+	}
 }
 
 func configureDefaultArmory() {
